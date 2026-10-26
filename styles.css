@@ -1,0 +1,860 @@
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background-color: #f8fafc;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* FONT VIẾT TAY BỨC THƯ */
+.letter-handwritten-text {
+    font-family: 'Dancing Script', cursive;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+.letter-handwritten-kuromi {
+    font-family: 'Dancing Script', cursive;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+}
+
+/* STAGE 1: TỜ GIẤY TRẮNG - CHỈ ĐỂ CANVAS */
+#stage-paper {
+    background-color: #fcfbf9;
+    background-image:
+        radial-gradient(#e2e8f0 1px, transparent 1px),
+        linear-gradient(to right, rgba(226, 232, 240, 0.35) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(226, 232, 240, 0.35) 1px, transparent 1px);
+    background-size: 24px 24px, 48px 48px, 48px 48px;
+    box-shadow: inset 0 0 120px rgba(148, 163, 184, 0.25);
+    transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1), transform 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+
+#jjk-card.scale-100 { transform: scale3d(1, 1, 1); opacity: 1; }
+
+/* Stage JJK background - tối để chữ trắng nổi bật */
+
+/* Letter paper content */
+.letter-paper-content {
+    background-color: #ffffff;
+    background-image: repeating-linear-gradient(transparent, transparent 27px, #e2e8f0 27px, #e2e8f0 28px);
+    background-attachment: local;
+    line-height: 28px;
+    background-position: 0 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    contain: content;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.letter-paper-content::-webkit-scrollbar { width: 4px; }
+.letter-paper-content::-webkit-scrollbar-thumb {
+    background: rgba(14, 165, 233, 0.55);
+    border-radius: 9999px;
+}
+
+/* Kuromi paper */
+.kuromi-paper {
+    background-color: #fff9fc;
+    background-image: repeating-linear-gradient(transparent, transparent 27px, #ffd1ec 27px, #ffd1ec 28px);
+    background-position: 0 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    contain: content;
+    overscroll-behavior: contain;
+}
+.kuromi-paper::-webkit-scrollbar { width: 4px; }
+.kuromi-paper::-webkit-scrollbar-thumb {
+    background: rgba(244, 114, 182, 0.5);
+    border-radius: 9999px;
+}
+.letter-paper-content .letter-handwritten-text,
+.letter-paper-content .letter-handwritten-kuromi {
+    font-size: 18px;
+    line-height: 28px;
+}
+
+/* ---------- STAGE 3: KUROMI - GPU OPTIMIZED ---------- */
+#stage-kuromi {
+    --heart: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 29.6'><path d='M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2c6.1-9.3,16-12.1,16-21.2C32,3.8,28.2,0,23.6,0z'/></svg>");
+    font-family: 'Quicksand', sans-serif;
+    opacity: 0;
+    visibility: hidden;
+    contain: layout paint style;
+    -webkit-mask-image: var(--heart);          mask-image: var(--heart);
+    -webkit-mask-repeat: no-repeat;            mask-repeat: no-repeat;
+    -webkit-mask-position: center;             mask-position: center;
+    -webkit-mask-size: 0px 0px;                mask-size: 0px 0px;
+    transition: -webkit-mask-size 1.2s cubic-bezier(0.65, 0, 0.2, 1),
+                mask-size 1.2s cubic-bezier(0.65, 0, 0.2, 1),
+                opacity 0.2s linear 1s,
+                visibility 0s linear 1.2s;
+}
+#stage-kuromi.active-kuromi {
+    opacity: 1;
+    visibility: visible;
+    -webkit-mask-size: 300vmax 300vmax;        mask-size: 300vmax 300vmax;
+    transition: -webkit-mask-size 1.2s cubic-bezier(0.65, 0, 0.2, 1),
+                mask-size 1.2s cubic-bezier(0.65, 0, 0.2, 1),
+                opacity 0.1s linear,
+                visibility 0s linear 0s;
+}
+
+.kuromi-letter-card {
+    background: #ffffff;
+    border: 3px solid #ff85c0;
+    box-shadow: 0 20px 60px rgba(255, 105, 180, 0.35), 0 0 0 6px rgba(255, 192, 226, 0.45);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.kuromi-bounce { animation: cuteBounce 3.2s ease-in-out infinite; }
+@keyframes cuteBounce {
+    0%, 100% { transform: translateY(0px) scale(1) rotate(-1deg); }
+    50% { transform: translateY(-8px) scale(1.02) rotate(1.5deg); }
+}
+
+/* ---------- CUSTOM SCROLLBAR KUROMI ---------- */
+.kuromi-paper::-webkit-scrollbar-thumb { background: rgba(244, 114, 182, 0.5); border-radius: 9999px; }
+
+/* ---------- HIỆU ỨNG BÁNH SINH NHẬT ---------- */
+.cake-wrapper { filter: drop-shadow(0 4px 10px rgba(0,0,0,0.15)); }
+.cake-wrapper .flame {
+    animation: flicker 0.3s ease-in-out infinite alternate;
+}
+.flame { animation: flicker 0.2s ease-in-out infinite alternate; }
+@keyframes flicker {
+    0% { transform: scale(1) rotate(-2deg); opacity: 0.95; }
+    100% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+}
+
+#candle-dark-overlay { pointer-events: none; cursor: none; }
+#candle-dark-overlay.clicked { pointer-events: auto; cursor: pointer; }
+#candle-dark-overlay {
+    background: radial-gradient(circle at 50% 30%, rgba(0,0,0,0.55), rgba(0,0,0,0.92) 75%);
+    backdrop-filter: blur(3px);
+}
+
+/* Nấm tỏa sáng nến */
+.candle-glow {
+    position: absolute;
+    width: 400px; height: 400px;
+    border-radius: 20%;
+    background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,230,150,0.15) 40%, transparent 70%);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+    z-index: 10;
+    will-change: transform;
+}
+.candle-hint {
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(6px);
+    animation: hintFloat 1.8s ease-in-out infinite;
+}
+@keyframes hintFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.candle-smoke {
+    position: absolute;
+    top: 0; left: 50%;
+    font-size: 28px;
+    pointer-events: none;
+    animation: smokeUp 1.5s ease-out forwards;
+}
+@keyframes smokeUp {
+    0%   { opacity: 0.9; transform: translate(-50%, 0) scale(0.6); }
+    100% { opacity: 0;   transform: translate(-50%, -50px) scale(1.4); }
+}
+.cake-1 .candle-glow { top: 12px; left: 50%; }
+
+/* ---------- BÁNH KẺ TRONG THƯ ---------- */
+.number-shape {
+    display: inline-block;
+    width: 18px; height: 26px;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.1);
+    font-weight: 900;
+    font-size: 16px;
+    line-height: 26px;
+    text-align: center;
+    color: #fff;
+    position: relative;
+    transform-origin: bottom center;
+}
+.candle-1 { width: 14px; }
+.candle-2 { width: 18px; }
+
+/* ---------- FLOWER ---------- */
+.jjk-flower-cluster { filter: drop-shadow(0 0 12px rgba(0, 242, 254, 0.6)); animation: floatSlow 5s ease-in-out infinite; }
+/* ---------- HIỆU ỨNG BÁNH SINH NHẬT RỜI XUỐNG ---------- */
+@keyframes dropCake {
+    0% { transform: translateY(-200px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+.candle-item { transform-origin: bottom center; }
+.candle-item .text-3xl { position: relative; top: -2px; }
+.flame { animation: flicker 0.2s ease-in-out infinite alternate; }
+@keyframes flicker {
+    0% { transform: scale(1) rotate(-2deg); opacity: 0.95; }
+    100% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+}
+
+#candle-dark-overlay { pointer-events: none; cursor: none; }
+#candle-dark-overlay.clicked { pointer-events: auto; cursor: pointer; }
+
+/* Tỏa sáng tròn từ tâm nến */
+.candle-glow {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,230,150,0.55) 0%, rgba(255,200,100,0.2) 40%, transparent 70%);
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+    z-index: -1;
+    will-change: transform;
+}
+.cake-1 .candle-glow { top: 12px; left: 50%; }
+
+/* ---------- BÁNH KẺ TRONG THƯ ---------- */
+.number-shape {
+    display: inline-block;
+    width: 18px; height: 26px;
+    background: #fff;
+    border-radius: 2px;
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,0.1);
+    font-weight: 900;
+    font-size: 16px;
+    line-height: 26px;
+    text-align: center;
+    color: #fff;
+    position: relative;
+    transform-origin: bottom center;
+}
+.candle-1 { width: 14px; }
+.candle-2 { width: 18px; }
+
+@keyframes floatSlow {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-7px) rotate(3deg); }
+}
+
+@keyframes blinkCursor {
+    0%, 100% { opacity: 1; } 50% { opacity: 0; }
+}
+
+.swipe-prompt-pill { animation: swipeNudge 2s infinite ease-in-out; }
+@keyframes swipeNudge {
+    0%, 100% { transform: translateX(0px); opacity: 0.65; } 50% { transform: translateX(-10px); opacity: 1; }
+}
+
+@keyframes animate-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+}
+.jjk-letter-card {
+    background: linear-gradient(145deg, #0f172a, #1e1b4b);
+    border: 3px solid #22d3ee;
+    box-shadow: 0 20px 60px rgba(0, 242, 254, 0.25), 0 0 0 6px rgba(34, 211, 238, 0.15);
+}
+#jjk-typewriter-text, #kuromi-typewriter-text { display: inline; }
+.cursor-jjk {
+    display: inline-block; width: 2px; height: 1.1em; margin-left: 2px;
+    background: #22d3ee; vertical-align: text-bottom;
+    animation: blinkCursor 1s step-end infinite;
+}
+.cursor-kuromi { animation: blinkCursor 1s step-end infinite; }
+#stage-kuromi { background-color: #3b0a33; }
+/* ===== BÁNH KEM DÙNG CHUNG ===== */
+.cakes-box { display: none; flex-direction: column; align-items: center; justify-content: center; }
+@media (min-width: 768px) { .cakes-box.show { display: flex; } }
+
+.cake {
+    --cream: #fff1f8;
+    position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    margin-top: 90px;
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.4));
+}
+.cake-jjk {
+    --t1a: #fbcfe8; --t1b: #f9a8d4;
+    --t2a: #f9a8d4; --t2b: #f472b6;
+    --t3a: #f472b6; --t3b: #ec4899;
+    --candle-a: #fde68a; --candle-b: #fbbf24;
+    --digit: #be185d; --label: #9d174d;
+}
+.cake-kuromi {
+    --cream: #fff0f8;
+    --t1a: #d8b4fe; --t1b: #a855f7;
+    --t2a: #4a2a4f; --t2b: #2e102d;
+    --t3a: #ff85c0; --t3b: #ec4899;
+    --candle-a: #f9a8d4; --candle-b: #ec4899;
+    --digit: #ffffff; --label: #ffffff;
+}
+
+.tier {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background-size: 26px 20px, auto;
+    animation: cakeDrop 1.2s ease-in-out both;
+}
+.tier::before {
+    content: ""; position: absolute; top: -7px; left: -2px; right: -2px; height: 16px;
+    border-radius: 9999px; background: var(--cream);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+.tier-1 { width: 250px; height: 78px; border-radius: 0 0 24px 24px; animation-delay: 0.5s;
+    background-image: radial-gradient(rgba(255,255,255,0.65) 2px, transparent 2.5px), linear-gradient(var(--t1a), var(--t1b)); }
+.tier-2 { width: 200px; height: 66px; animation-delay: 1.3s;
+    background-image: radial-gradient(rgba(255,255,255,0.55) 2px, transparent 2.5px), linear-gradient(var(--t2a), var(--t2b)); }
+.tier-3 { width: 150px; height: 56px; border-radius: 22px 22px 0 0; animation-delay: 2.1s;
+    background-image: radial-gradient(rgba(255,255,255,0.65) 2px, transparent 2.5px), linear-gradient(var(--t3a), var(--t3b)); }
+
+.tier-label { font-size: 13px; font-weight: 800; letter-spacing: 0.3em; color: var(--label); }
+.topping {
+    position: absolute; top: -28px; font-size: 24px; z-index: 2;
+    filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.25));
+}
+
+@keyframes cakeDrop {
+    0%   { transform: translateY(-320px); opacity: 0; }
+    55%  { transform: translateY(0); opacity: 1; }
+    72%  { transform: translateY(-14px); }
+    100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes plateIn {
+    from { opacity: 0; transform: scale(0.6); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.cake-plate {
+    width: 300px; height: 18px; margin-top: -4px; border-radius: 50%;
+    background: linear-gradient(#f1f5f9, #94a3b8);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4);
+    animation: plateIn 0.6s ease-out both;
+}
+.cake-side { position: absolute; bottom: -4px; font-size: 38px; animation: plateIn 0.6s ease-out 3.2s both; }
+.cake-side-l { left: -40px; }
+.cake-side-r { right: -40px; }
+
+/* Nến số */
+.candle-holder {
+    position: absolute; top: -84px; left: 0; right: 0; z-index: 3;
+    display: flex; justify-content: center; gap: 14px;
+    animation: cakeDrop 0.9s ease-in-out 3s both;
+}
+.candle { display: flex; flex-direction: column; align-items: center; }
+.candle-flame {
+    font-size: 26px; line-height: 30px; height: 30px;
+    transform-origin: bottom center;
+    transition: opacity 0.4s, transform 0.4s;
+}
+.candle-body {
+    width: 30px; height: 56px; border-radius: 8px 8px 4px 4px;
+    background: linear-gradient(90deg, var(--candle-a), var(--candle-b));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 -4px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+.candle-body b {
+    font-size: 28px; font-weight: 900; line-height: 1; color: var(--digit);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Vùng bấm thổi nến */
+.candle-tap {
+    position: absolute; left: -10px; right: -10px; top: -140px; height: 170px; z-index: 6;
+    display: flex; align-items: flex-start; justify-content: center;
+    cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.7s;
+}
+
+/* ===== TIÊU ĐỀ + ICON TRANG TRÍ ===== */
+.birthday-title {
+    position: absolute; top: 5vh; left: 0; right: 0; z-index: 6;
+    margin: 0; padding: 0.15em 0; text-align: center; pointer-events: none;
+}
+.title-jjk {
+    font-family: 'Cinzel Decorative', serif; font-weight: 900; letter-spacing: 0.08em;
+    font-size: clamp(26px, 4.5vw, 54px); color: #fff;
+    background: linear-gradient(90deg, transparent, rgba(15,23,42,0.7) 25%, rgba(15,23,42,0.7) 75%, transparent);
+    text-shadow: 0 0 12px rgba(0,242,254,0.9), 0 0 32px rgba(0,242,254,0.6);
+}
+.title-kuromi {
+    font-family: 'Great Vibes', cursive;
+    font-size: clamp(34px, 6vw, 72px); color: #fff;
+    background: linear-gradient(90deg, transparent, rgba(157,23,77,0.55) 25%, rgba(157,23,77,0.55) 75%, transparent);
+    text-shadow: 0 0 10px #ff85c0, 0 0 28px #ec4899, 0 3px 10px rgba(46,16,45,0.6);
+}
+
+.deco {
+    position: absolute; z-index: 5; pointer-events: none; user-select: none;
+    animation: decoFloat var(--d, 6s) ease-in-out infinite;
+    animation-delay: var(--delay, 0s);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+}
+@keyframes decoFloat {
+    0%, 100% { transform: translateY(0) rotate(-6deg); }
+    50%      { transform: translateY(-18px) rotate(6deg); }
+}
+
+/* Thẻ thư thở nhẹ */
+.jjk-letter-card { animation: jjkGlow 3.5s ease-in-out infinite; }
+.kuromi-letter-card { animation: kuromiGlow 3.5s ease-in-out infinite; }
+@keyframes jjkGlow {
+    0%, 100% { box-shadow: 0 20px 60px rgba(0,242,254,0.25), 0 0 0 6px rgba(34,211,238,0.15); }
+    50%      { box-shadow: 0 20px 80px rgba(0,242,254,0.5),  0 0 0 10px rgba(34,211,238,0.28); }
+}
+@keyframes kuromiGlow {
+    0%, 100% { box-shadow: 0 20px 60px rgba(255,105,180,0.35), 0 0 0 6px rgba(255,192,226,0.45); }
+    50%      { box-shadow: 0 20px 80px rgba(255,105,180,0.6),  0 0 0 10px rgba(255,192,226,0.6); }
+}
+#morph-rect {
+    border: 3px solid #00f2fe;
+    border-radius: 14px;
+    background-color: rgba(0, 242, 254, 0.08);
+    box-shadow: 0 0 30px rgba(0, 242, 254, 0.7), inset 0 0 24px rgba(0, 242, 254, 0.25);
+}
+#morph-rect.morph-snap { animation: morphSnap 0.35s ease-out; }
+#morph-rect.morph-go {
+    background-color: #151a3b;
+    box-shadow: 0 20px 60px rgba(0, 242, 254, 0.35), 0 0 0 6px rgba(34, 211, 238, 0.15);
+}
+@keyframes morphSnap {
+    0%   { transform: scale(0.94); filter: brightness(2.2); }
+    60%  { transform: scale(1.05); }
+    100% { transform: scale(1);    filter: brightness(1); }
+}
+/* ===== HIỆU ỨNG CHUYỂN CẢNH ===== */
+.fx-flash {
+    position: fixed; inset: 0; z-index: 80; pointer-events: none;
+    background: radial-gradient(circle at var(--cx) var(--cy), #fff 0%, rgba(0, 242, 254, 0.55) 40%, transparent 75%);
+    animation: flashAnim 0.55s ease-out forwards;
+}
+@keyframes flashAnim { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+
+.fx-ring {
+    position: fixed; z-index: 65; pointer-events: none;
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 3px solid #22d3ee;
+    box-shadow: 0 0 24px #22d3ee, inset 0 0 24px #22d3ee;
+    transform: translate(-50%, -50%) scale(0); opacity: 0.9;
+    animation: ringExpand 1s cubic-bezier(0.1, 0.7, 0.2, 1) var(--delay, 0s) both;
+}
+@keyframes ringExpand {
+    to { transform: translate(-50%, -50%) scale(var(--s, 30)); opacity: 0; border-width: 1px; }
+}
+
+.fx-spark {
+    position: fixed; z-index: 70; pointer-events: none;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #67e8f9; box-shadow: 0 0 10px #22d3ee, 0 0 18px #22d3ee;
+    animation: sparkFly 0.9s ease-out forwards;
+}
+@keyframes sparkFly {
+    from { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    to   { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.2); opacity: 0; }
+}
+
+body.fx-shake { animation: fxShake 0.4s linear; }
+@keyframes fxShake {
+    0%, 100% { transform: translate(0, 0); }
+    15% { transform: translate(-7px, 4px); }
+    30% { transform: translate(6px, -5px); }
+    45% { transform: translate(-5px, -3px); }
+    60% { transform: translate(4px, 5px); }
+    75% { transform: translate(-3px, 2px); }
+}
+
+/* Chữ Domain Expansion đập xuống */
+#domain-banner.slam h2 { animation: domainSlam 0.7s cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+#domain-banner.slam p  { animation: domainSub 0.8s ease-out 0.15s both; }
+@keyframes domainSlam {
+    0%   { transform: scale(2.4); letter-spacing: 0.6em; opacity: 0; filter: blur(12px); }
+    60%  { transform: scale(0.96); opacity: 1; filter: blur(0); }
+    100% { transform: scale(1); letter-spacing: 0.05em; opacity: 1; filter: blur(0); }
+}
+@keyframes domainSub {
+    0%   { opacity: 0; transform: translateY(-14px); letter-spacing: 0.8em; }
+    100% { opacity: 1; transform: none; }
+}
+
+/* Thư hiện ra: sáng lóe, rồi các khối bên trong trồi lên */
+.jjk-letter-card.card-pop {
+    animation: cardPop 0.7s ease-out, jjkGlow 3.5s ease-in-out 0.7s infinite;
+}
+@keyframes cardPop {
+    0%   { filter: brightness(2.2) saturate(1.4); }
+    100% { filter: brightness(1) saturate(1); }
+}
+.jjk-letter-card.card-pop > :nth-child(n+2) { animation: childIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.jjk-letter-card.card-pop > :nth-child(3) { animation-delay: 0.12s; }
+@keyframes childIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.96); }
+    to   { opacity: 1; transform: none; }
+}
+/* ===== CHUYỂN CẢNH KUROMI ===== */
+#stage-jjk { transition: opacity 0.7s, filter 0.8s ease; }
+#stage-jjk.dim { filter: brightness(0.55) saturate(0.4); }
+
+/* biến thể hồng cho hiệu ứng cũ */
+.fx-flash.pink { background: radial-gradient(circle at var(--cx) var(--cy), #fff 0%, rgba(255, 133, 192, 0.6) 40%, transparent 75%); }
+.fx-ring.pink  { border-color: #ff85c0; box-shadow: 0 0 24px #ff85c0, inset 0 0 24px #ff85c0; }
+.fx-spark.pink { background: #fbcfe8; box-shadow: 0 0 10px #ff85c0, 0 0 18px #ec4899; }
+
+/* tim / ruy băng nổ ra */
+.fx-heart {
+    position: fixed; z-index: 85; pointer-events: none;
+    animation: heartBurst 1.4s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+@keyframes heartBurst {
+    0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+    15%  { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 80px)) scale(1) rotate(var(--rot)); opacity: 0; }
+}
+
+/* chữ THẾ GIỚI KẸO NGỌT */
+#kuromi-banner {
+    position: fixed; inset: 0; z-index: 90; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.3), rgba(76, 5, 56, 0.55));
+    opacity: 0; transition: opacity 0.4s;
+}
+#kuromi-banner p {
+    margin: 0 0 6px; color: #ffe4f3; font-weight: 700; font-size: 13px;
+    letter-spacing: 0.35em; text-transform: uppercase;
+    text-shadow: 0 0 12px #ff85c0;
+}
+#kuromi-banner h2 {
+    margin: 0; font-family: 'Dancing Script', cursive; font-weight: 700;
+    font-size: clamp(42px, 9vw, 110px); color: #fff; text-align: center; padding: 0 12px;
+    text-shadow: 0 0 14px #ff85c0, 0 0 40px #ec4899, 0 4px 0 #9d174d;
+}
+#kuromi-banner.slam h2 { animation: kuromiSlam 0.8s cubic-bezier(0.2, 1.5, 0.3, 1) both; }
+#kuromi-banner.slam p  { animation: domainSub 0.8s ease-out 0.15s both; }
+@keyframes kuromiSlam {
+    0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; filter: blur(8px); }
+    60%  { transform: scale(1.15) rotate(3deg);  opacity: 1; filter: blur(0); }
+    100% { transform: scale(1) rotate(-2deg);    opacity: 1; }
+}
+
+/* thẻ thư Kuromi xoay + nảy vào */
+.kuromi-letter-card.card-pop-k {
+    animation: kCardIn 0.95s cubic-bezier(0.2, 1.3, 0.3, 1) both,
+               kuromiGlow 3.5s ease-in-out 0.95s infinite;
+}
+@keyframes kCardIn {
+    0%   { transform: scale(0.3) rotate(-10deg); opacity: 0; filter: brightness(2); }
+    60%  { transform: scale(1.06) rotate(2deg);  opacity: 1; }
+    100% { transform: scale(1) rotate(0);        opacity: 1; filter: brightness(1); }
+}
+.kuromi-letter-card.card-pop-k > :nth-child(n+2) { animation: childIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both; }
+.kuromi-letter-card.card-pop-k > :nth-child(3)   { animation-delay: 0.5s; }
+/* ===== CHIBI ĐI VÒNG QUANH THƯ ===== */
+.chibi {
+    position: absolute; left: 0; top: 0; z-index: 30;
+    width: 0; height: 0;
+    cursor: pointer; will-change: transform;
+}
+.chibi-body {
+    position: absolute; left: -22px; top: -46px;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    transform-origin: bottom center;
+}
+.chibi-face {
+    font-size: 38px; line-height: 1; display: block;
+    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3));
+}
+.chibi-shadow {
+    position: absolute; left: -16px; top: -6px;
+    width: 32px; height: 8px; border-radius: 50%;
+    background: rgba(0, 0, 0, 0.28); filter: blur(2px);
+}
+/* nhún nhảy khi đi */
+.chibi-walk .chibi-body { animation: chibiHop 0.45s ease-in-out infinite; }
+@keyframes chibiHop {
+    0%, 100% { transform: translateY(0) scale(1.08, 0.92) rotate(-6deg); }
+    50%      { transform: translateY(-9px) scale(0.94, 1.08) rotate(6deg); }
+}
+/* chạm vào thì nhảy lên */
+.chibi-jump .chibi-body { animation: chibiJump 0.8s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes chibiJump {
+    0%   { transform: translateY(0) scale(1.2, 0.8); }
+    40%  { transform: translateY(-34px) scale(0.9, 1.15) rotate(180deg); }
+    100% { transform: translateY(0) scale(1) rotate(360deg); }
+}
+/* ================= PARTY DECOR ================= */
+.party-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 4; }
+.party-glow { position: absolute; inset: 0; mix-blend-mode: screen; animation: glowShift 9s ease-in-out infinite alternate; }
+@keyframes glowShift {
+    from { filter: hue-rotate(0deg); transform: scale(1); }
+    to   { filter: hue-rotate(55deg); transform: scale(1.08); }
+}
+
+/* dây cờ */
+.bunting-svg { position: absolute; left: 0; top: 0; overflow: visible; }
+.flag {
+    position: absolute; width: 26px; height: 34px;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    transform-origin: 50% 0;
+    animation: flagSway 2.4s ease-in-out infinite alternate;
+}
+@keyframes flagSway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+
+/* bóng bay bay lên */
+.party-balloon {
+    position: absolute; bottom: -110px;
+    width: var(--w, 38px); height: calc(var(--w, 38px) * 1.25);
+    border-radius: 50% 50% 48% 48% / 58% 58% 42% 42%;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.75) 0 8%, transparent 9%), var(--c);
+    opacity: .92;
+    animation: partyRise var(--t, 12s) linear var(--dl, 0s) infinite;
+}
+.party-balloon::before {
+    content: ""; position: absolute; left: 50%; bottom: -5px; width: 9px; height: 7px;
+    background: var(--c); clip-path: polygon(50% 0, 0 100%, 100% 100%); transform: translateX(-50%);
+}
+.party-balloon::after {
+    content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 46px;
+    background: rgba(255,255,255,.55);
+}
+@keyframes partyRise {
+    0%   { transform: translate3d(0, 0, 0) rotate(-4deg); }
+    50%  { transform: translate3d(var(--sx), -60vh, 0) rotate(4deg); }
+    100% { transform: translate3d(0, -125vh, 0) rotate(-4deg); }
+}
+
+/* confetti rơi (dùng cho stage 3) */
+.party-confetti {
+    position: absolute; top: -24px; width: 9px; height: 14px; border-radius: 2px;
+    background: var(--c);
+    animation: partyFall var(--t, 8s) linear var(--dl, 0s) infinite;
+}
+@keyframes partyFall {
+    0%   { transform: translate3d(0, 0, 0) rotate(0deg); }
+    100% { transform: translate3d(var(--sx), 112vh, 0) rotate(720deg); }
+}
+
+/* ================= SECRET BOX ================= */
+.kuromi-squish { animation: kuromiSquish .35s ease-out; }
+@keyframes kuromiSquish {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(.88, 1.1); }
+    70%  { transform: scale(1.08, .94); }
+    100% { transform: scale(1); }
+}
+.tap-pop {
+    position: fixed; z-index: 95; pointer-events: none;
+    font: 800 15px 'Quicksand', sans-serif; color: #fff;
+    padding: 3px 12px; border-radius: 9999px; background: rgba(236,72,153,.92);
+    transform: translate(-50%, -50%);
+    animation: tapPop .9s ease-out forwards;
+}
+@keyframes tapPop { to { opacity: 0; transform: translate(-50%, -95px) scale(1.2); } }
+
+#sbox-backdrop {
+    position: absolute; inset: 0; z-index: 38;
+    background: radial-gradient(circle, rgba(76,5,56,.55), rgba(30,3,28,.9));
+    opacity: 0; transition: opacity .8s;
+}
+#sbox-backdrop.show { opacity: 1; }
+
+.sbox {
+    position: absolute; left: 50%; top: 50%; width: 140px; height: 140px; margin: -70px 0 0 -70px;
+    z-index: 40; cursor: pointer;
+    filter: drop-shadow(0 0 28px rgba(255,133,192,.85));
+    animation: sboxRise 2.8s cubic-bezier(.2,.8,.2,1) both, sboxWobble 1.8s ease-in-out 2.8s infinite;
+}
+.sbox.opened { animation: none; cursor: default; }
+@keyframes sboxRise {
+    0%   { transform: translateY(60vh) scale(.2) rotate(-25deg); opacity: 0; }
+    60%  { opacity: 1; }
+    100% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+}
+@keyframes sboxWobble {
+    0%, 100% { transform: rotate(-4deg) scale(1); }
+    50%      { transform: rotate(4deg) scale(1.06); }
+}
+.sbox-body {
+    position: absolute; left: 10px; right: 10px; bottom: 0; height: 86px;
+    border-radius: 6px 6px 12px 12px; background: linear-gradient(#ff85c0, #ec4899);
+}
+.sbox-body::after, .sbox-lid::after {
+    content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 20px; margin-left: -10px;
+    background: linear-gradient(90deg, #fde68a, #fbbf24);
+}
+.sbox-lid {
+    position: absolute; left: 0; right: 0; top: 20px; height: 38px; z-index: 2;
+    border-radius: 8px; background: linear-gradient(#f9a8d4, #f472b6);
+    transform-origin: left bottom;
+    transition: transform .7s cubic-bezier(.3,1.5,.5,1);
+}
+.sbox.opened .sbox-lid { transform: translate(-30px, -70px) rotate(-28deg); }
+.sbox-bow { position: absolute; left: 50%; top: -22px; font-size: 34px; transform: translateX(-50%); z-index: 3; }
+.sbox-hint {
+    position: absolute; left: 50%; top: -38px; transform: translateX(-50%); white-space: nowrap;
+    font: 700 13px 'Quicksand', sans-serif; color: #fff;
+    padding: 5px 14px; border-radius: 9999px; background: rgba(15,23,42,.6); border: 1px solid rgba(255,255,255,.35);
+    opacity: 0; animation: hintIn .5s ease 2.8s forwards;
+}
+.sbox.opened .sbox-hint { display: none; }
+@keyframes hintIn { to { opacity: 1; } }
+
+.wish {
+    position: absolute; z-index: 41; pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: wishOut .9s cubic-bezier(.2,1.25,.3,1) var(--d, 0s) both;
+}
+@keyframes wishOut {
+    from { opacity: 0; transform: translate(calc(-50% + var(--fx)), calc(-50% + var(--fy))) scale(.1) rotate(-90deg); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+}
+.wish-pill {
+    display: block; padding: 5px 12px; border-radius: 9999px; text-align: center;
+    font: 700 13px/1.25 'Quicksand', sans-serif; color: #4a1942;
+    border: 2px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,.28);
+    animation: wishBob var(--bt, 3s) ease-in-out var(--bd, 0s) infinite alternate;
+}
+@keyframes wishBob {
+    from { transform: translateY(-4px) rotate(-2deg); }
+    to   { transform: translateY(4px) rotate(2deg); }
+}
+#sbox-close {
+    position: absolute; left: 50%; bottom: 3vh; transform: translateX(-50%); z-index: 42;
+    padding: 8px 20px; border-radius: 9999px; border: 2px solid #fff; cursor: pointer;
+    font: 800 14px 'Quicksand', sans-serif; color: #fff; background: #ec4899;
+    box-shadow: 0 6px 18px rgba(236,72,153,.6);
+    opacity: 0; animation: hintIn .5s ease 2.4s forwards;
+}
+.sbox-leaving { animation: leaveFade .4s ease forwards !important; }
+@keyframes leaveFade { to { opacity: 0; transform: scale(.85); } }
+/* ================= PHÁO HOA + PHÁO GIẤY ================= */
+#fireworks-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 60; pointer-events: none; }
+
+/* ================= MÀN "ƯỚC ĐI NÀO" ================= */
+#wish-moment {
+    position: fixed; inset: 0; z-index: 58; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 45%, rgba(30,20,70,.55), rgba(8,4,24,.92));
+    opacity: 0; transition: opacity .9s ease;
+}
+#wish-moment.show { opacity: 1; }
+#wish-moment.wm-jjk    { --glow: #22d3ee; }
+#wish-moment.wm-kuromi { --glow: #ff85c0; }
+.wm-line {
+    margin: 0; padding: 0 16px; text-align: center;
+    font-family: 'Dancing Script', cursive; font-weight: 700;
+    font-size: clamp(30px, 6vw, 64px); color: #fff;
+    text-shadow: 0 0 14px var(--glow), 0 0 40px var(--glow);
+    opacity: 0; animation: wmIn 1.2s ease .5s forwards;
+}
+.wm-sub {
+    margin: 10px 0 0; font: 700 clamp(13px, 2vw, 18px) 'Quicksand', sans-serif; letter-spacing: .3em;
+    color: #fde68a; text-shadow: 0 0 12px rgba(253,230,138,.8);
+    opacity: 0; animation: wmIn 1.2s ease 1.6s forwards;
+}
+@keyframes wmIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.wm-star {
+    position: absolute; width: var(--s, 3px); height: var(--s, 3px); border-radius: 50%;
+    background: #fff; box-shadow: 0 0 8px 2px rgba(255,255,255,.8);
+    opacity: 0; animation: wmTwinkle 2.2s ease-in-out var(--dl, 0s) infinite;
+}
+@keyframes wmTwinkle {
+    0%, 100% { opacity: .1; transform: scale(.6); }
+    50%      { opacity: 1;  transform: scale(1.2); }
+}
+
+/* sao băng */
+.shoot-star {
+    position: fixed; z-index: 59; width: 190px; height: 3px; border-radius: 3px; pointer-events: none;
+    background: linear-gradient(90deg, #fff 0%, rgba(255,255,255,.7) 20%, transparent 100%);
+    box-shadow: 0 0 12px 2px rgba(255,255,255,.7);
+    transform-origin: left center;
+    animation: shootAcross 1.2s cubic-bezier(.4, 0, .8, .6) forwards;
+}
+.shoot-star::before {
+    content: ""; position: absolute; left: -5px; top: -4px; width: 11px; height: 11px; border-radius: 50%;
+    background: #fff; box-shadow: 0 0 14px 5px rgba(255,255,255,.9), 0 0 30px 10px rgba(180,220,255,.6);
+}
+@keyframes shootAcross {
+    0%   { opacity: 0; transform: translate(0, 0) rotate(-30deg); }
+    10%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(-70vw, 40vw) rotate(-30deg); }
+}
+
+/* ================= THẺ KỶ NIỆM ================= */
+#memory-wrap {
+    position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center;
+    padding: 16px; background: rgba(30,3,28,.78); backdrop-filter: blur(4px);
+    animation: memFade .5s ease both;
+}
+#memory-wrap.leaving { animation: memFadeOut .45s ease forwards; }
+@keyframes memFade    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes memFadeOut { to { opacity: 0; } }
+
+.memory-card {
+    position: relative; width: min(340px, 90vw); padding: 14px 14px 16px; text-align: center;
+    background: #fffdf8; border-radius: 6px; box-shadow: 0 24px 70px rgba(0,0,0,.55);
+    transform: rotate(-2.5deg);
+    animation: memIn .9s cubic-bezier(.2, 1.3, .3, 1) both;
+}
+@keyframes memIn {
+    from { opacity: 0; transform: translateY(60px) scale(.6) rotate(-14deg); }
+    to   { opacity: 1; transform: rotate(-2.5deg); }
+}
+.memory-card .tape {
+    position: absolute; top: -8px; width: 74px; height: 22px; background: rgba(253,224,71,.7);
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+}
+.memory-card .tape-l { left: -16px;  transform: rotate(-35deg); }
+.memory-card .tape-r { right: -16px; transform: rotate(35deg); }
+.memory-photo {
+    width: 100%; height: min(40vh, 300px); overflow: hidden; border-radius: 3px;
+    background: linear-gradient(135deg, #fbcfe8, #e9d5ff); display: flex; align-items: center; justify-content: center;
+}
+.memory-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.memory-emoji { font-size: 90px; }
+.memory-title { margin: 12px 0 4px; font: 700 28px 'Dancing Script', cursive; color: #be185d; }
+.memory-msg {
+    margin: 0; font: 700 18px/1.45 'Dancing Script', cursive; color: #4a1942; white-space: pre-line;
+}
+.memory-sign { display: block; width: 150px; margin: 6px 6px 0 auto; overflow: visible; }
+.memory-sign text {
+    font-family: 'Dancing Script', cursive; font-weight: 700; font-size: 58px;
+    fill: #be185d; fill-opacity: 0; stroke: #be185d; stroke-width: 1.3;
+    stroke-dasharray: 700; stroke-dashoffset: 700;
+    animation: signDraw 2.4s ease .8s forwards, signFill .6s ease 3s forwards;
+}
+@keyframes signDraw { to { stroke-dashoffset: 0; } }
+@keyframes signFill { to { fill-opacity: 1; } }
+.memory-close {
+    margin-top: 8px; padding: 8px 20px; border: 0; border-radius: 9999px; cursor: pointer;
+    font: 800 14px 'Quicksand', sans-serif; color: #fff; background: #ec4899;
+    box-shadow: 0 6px 16px rgba(236,72,153,.5);
+}
